@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bandwidth Auction DApp</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            flex: 1 1 300px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: #3498db;
+        }
+        button.secondary:hover {
+            background-color: #2980b9;
+        }
+        button.danger {
+            background-color: #e74c3c;
+        }
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bandwidth Auction DApp</h1>
+    
+    <div id="connection-status" class="status info">Connecting to MetaMask...</div>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Auction Information</h2>
+            <div>
+                <p><strong>Seller:</strong> <span id="seller-address">Loading...</span></p>
+                <p><strong>Admin:</strong> <span id="admin-address">Loading...</span></p>
+                <p><strong>Initial Bandwidth:</strong> <span id="seller-bandwidth">Loading...</span></p>
+                <p><strong>Remaining Bandwidth:</strong> <span id="remaining-bandwidth">Loading...</span></p>
+                <p><strong>Auction Status:</strong> <span id="auction-status">Loading...</span></p>
+                <p><strong>Start Time:</strong> <span id="start-time">Loading...</span></p>
+                <p><strong>Current User:</strong> <span id="current-user">Loading...</span></p>
+                <p><strong>Buyers Registered:</strong> <span id="buyers-count">Loading...</span></p>
+            </div>
+        </div>
+
+        <div class="card" id="buyer-registration">
+            <h2>Register as a Buyer</h2>
+            <div class="form-group">
+                <label for="demand">Demand:</label>
+                <input type="number" id="demand" min="100" max="500" placeholder="Enter demand (100-500)">
+            </div>
+            <div class="form-group">
+                <label for="capacity">Capacity:</label>
+                <input type="number" id="capacity" min="1" placeholder="Enter capacity">
+            </div>
+            <div class="form-group">
+                <label for="urgency">Urgency:</label>
+                <input type="number" id="urgency" min="0" max="100000" placeholder="Enter urgency (0-100000)">
+            </div>
+            <button id="register-buyer">Register as Buyer</button>
+            <div id="registration-status"></div>
+        </div>
+
+        <div class="card" id="buyer-actions">
+            <h2>Buyer Actions</h2>
+            <div id="my-buyer-info">
+                <p><strong>My Registration Status:</strong> <span id="registration-info">Not registered</span></p>
+                <p class="hidden" id="payment-info-container"><strong>Payment Status:</strong> <span id="payment-info">Not paid</span></p>
+                <p class="hidden" id="payment-amount-container"><strong>Required Payment:</strong> <span id="payment-amount">0</span> wei</p>
+            </div>
+            <button id="calculate-optimal" class="secondary">Calculate Optimal Strategy</button>
+            <button id="make-payment" class="secondary" disabled>Make Payment</button>
+            <div id="buyer-action-status"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Buyers Data</h2>
+        <button id="refresh-buyers">Refresh Buyers Data</button>
+        <div style="overflow-x: auto;">
+            <table id="buyers-table">
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Demand</th>
+                        <th>Capacity</th>
+                        <th>Urgency</th>
+                        <th>Trading Price</th>
+                        <th>Trading Bandwidth</th>
+                        <th>Trading Money</th>
+                        <th>Payment Status</th>
+                    </tr>
+                </thead>
+                <tbody id="buyers-data">
+                    <tr><td colspan="8" style="text-align: center;">No data available</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" id="admin-panel">
+        <h2>Admin Panel</h2>
+        <button id="end-auction" class="danger">End Auction</button>
+        <div id="admin-status"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script>
+        // Contract details
+        const contractAddress = "0x2b429a8c88C751dda4ca018f467fcE63aE59019b"; // Replace with your deployed contract address
+        const contractABI = [
+        [
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "_demand",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_Capacity",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_Urgency",
+                    "type": "uint256"
+                }
+            ],
+            "name": "AddBuyer",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address payable",
+                    "name": "_seller",
+                    "type": "address"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_sellerBandwidth",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "string",
+                    "name": "_currentUser",
+                    "type": "string"
+                }
+            ],
+            "stateMutability": "nonpayable",
+            "type": "constructor"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "startTime",
+                    "type": "uint256"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "string",
+                    "name": "currentUser",
+                    "type": "string"
+                }
+            ],
+            "name": "AuctionStarted",
+            "type": "event"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "address",
+                    "name": "buyerAddress",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "index",
+                    "type": "uint256"
+                }
+            ],
+            "name": "BuyerAdded",
+            "type": "event"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "address",
+                    "name": "_seller",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "_remaining_Q",
+                    "type": "uint256"
+                }
+            ],
+            "name": "End_Auction",
+            "type": "event"
+        },
+        {
+            "inputs": [],
+            "name": "endAuction",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "address",
+                    "name": "buyerAddress",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "amount",
+                    "type": "uint256"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "bool",
+                    "name": "success",
+                    "type": "bool"
+                }
+            ],
+            "name": "FundTransfer",
+            "type": "event"
+        },
+        {
+            "anonymous": false,
+            "inputs": [
+                {
+                    "indexed": false,
+                    "internalType": "address",
+                    "name": "_UAVAddress",
+                    "type": "address"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "_price",
+                    "type": "uint256"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "_TradingBandwidth",
+                    "type": "uint256"
+                },
+                {
+                    "indexed": false,
+                    "internalType": "uint256",
+                    "name": "_TradingMoney",
+                    "type": "uint256"
+                }
+            ],
+            "name": "Optimal",
+            "type": "event"
+        },
+        {
+            "inputs": [],
+            "name": "OptimalStrategy",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "transferFunds",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        },
+        {
+            "stateMutability": "payable",
+            "type": "receive"
+        },
+        {
+            "inputs": [],
+            "name": "admin",
+            "outputs": [
+                {
+                    "internalType": "address payable",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "alpha",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "autionName",
+            "outputs": [
+                {
+                    "internalType": "string",
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "beta",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "buyerAddresses",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "name": "buyerPayments",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "capacities",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "Capacity",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "currentUser",
+            "outputs": [
+                {
+                    "internalType": "string",
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "danwei",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "demand",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "demands",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "deploymentTime",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "eta",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getAllBuyersData",
+            "outputs": [
+                {
+                    "internalType": "address[]",
+                    "name": "_buyers",
+                    "type": "address[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_demands",
+                    "type": "uint256[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_capacities",
+                    "type": "uint256[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_urgencies",
+                    "type": "uint256[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_tradingPrices",
+                    "type": "uint256[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_tradingBandwidths",
+                    "type": "uint256[]"
+                },
+                {
+                    "internalType": "uint256[]",
+                    "name": "_tradingMoneys",
+                    "type": "uint256[]"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getAuctionStatus",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "isEnded",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "startTimeStamp",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "endTimeStamp",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "remainingQuantity",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "string",
+                    "name": "userLogin",
+                    "type": "string"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "_buyer",
+                    "type": "address"
+                }
+            ],
+            "name": "getBuyerBalance",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "index",
+                    "type": "uint256"
+                }
+            ],
+            "name": "getBuyerData",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "buyerAddress",
+                    "type": "address"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_demand",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_capacity",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_urgency",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_tradingPrice",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_tradingBandwidth",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "_tradingMoney",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "buyer",
+                    "type": "address"
+                }
+            ],
+            "name": "getBuyerPaymentAmount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getBuyersCount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getRequiredPaymentAmount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getSellerBalance",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getUnpaidBuyers",
+            "outputs": [
+                {
+                    "internalType": "address[]",
+                    "name": "",
+                    "type": "address[]"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "name": "hasPaid",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "buyer",
+                    "type": "address"
+                }
+            ],
+            "name": "hasPaymentBeenMade",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "isFinshed",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "",
+                    "type": "bool"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "MAX_URGENCY",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "MIN_URGENCY",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "outTime",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "Q",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "remaining_Q",
+            "outputs": [
+                {
+                    "internalType": "int256",
+                    "name": "",
+                    "type": "int256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "seller",
+            "outputs": [
+                {
+                    "internalType": "address payable",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "sellerBandwidth",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "x",
+                    "type": "uint256"
+                }
+            ],
+            "name": "sqrt",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "y",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "pure",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "startTime",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "tradingBandwidths",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "tradingMoneys",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "tradingPrices",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "urgencies",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "Urgency",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "w",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ],
+            {"inputs":[{"internalType":"address payable","name":"_seller","type":"address"},{"internalType":"uint256","name":"_sellerBandwidth","type":"uint256"},{"internalType":"string","name":"_currentUser","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},
+            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"startTime","type":"uint256"},{"indexed":false,"internalType":"string","name":"currentUser","type":"string"}],"name":"AuctionStarted","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"buyerAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"}],"name":"BuyerAdded","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"_seller","type":"address"},{"indexed":false,"internalType":"uint256","name":"_remaining_Q","type":"uint256"}],"name":"End_Auction","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"buyerAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bool","name":"success","type":"bool"}],"name":"FundTransfer","type":"event"},
+            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"_UAVAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"_price","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_TradingBandwidth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_TradingMoney","type":"uint256"}],"name":"Optimal","type":"event"},
+            {"inputs":[{"internalType":"uint256","name":"_demand","type":"uint256"},{"internalType":"uint256","name":"_Capacity","type":"uint256"},{"internalType":"uint256","name":"_Urgency","type":"uint256"}],"name":"AddBuyer","outputs":[],"stateMutability":"payable","type":"function"},
+            {"inputs":[],"name":"OptimalStrategy","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"Q","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"admin","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"alpha","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"autionName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"beta","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"buyerAddresses","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"buyerPayments","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"capacities","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"currentUser","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"demands","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"deploymentTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"endAuction","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"eta","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getAllBuyersData","outputs":[{"internalType":"address[]","name":"_buyers","type":"address[]"},{"internalType":"uint256[]","name":"_demands","type":"uint256[]"},{"internalType":"uint256[]","name":"_capacities","type":"uint256[]"},{"internalType":"uint256[]","name":"_urgencies","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingPrices","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingBandwidths","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingMoneys","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getAuctionStatus","outputs":[{"internalType":"bool","name":"isEnded","type":"bool"},{"internalType":"uint256","name":"startTimeStamp","type":"uint256"},{"internalType":"uint256","name":"endTimeStamp","type":"uint256"},{"internalType":"uint256","name":"remainingQuantity","type":"uint256"},{"internalType":"string","name":"userLogin","type":"string"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"_buyer","type":"address"}],"name":"getBuyerBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"index","type":"uint256"}],"name":"getBuyerData","outputs":[{"internalType":"address","name":"buyerAddress","type":"address"},{"internalType":"uint256","name":"_demand","type":"uint256"},{"internalType":"uint256","name":"_capacity","type":"uint256"},{"internalType":"uint256","name":"_urgency","type":"uint256"},{"internalType":"uint256","name":"_tradingPrice","type":"uint256"},{"internalType":"uint256","name":"_tradingBandwidth","type":"uint256"},{"internalType":"uint256","name":"_tradingMoney","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"getBuyerPaymentAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getBuyersCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getRequiredPaymentAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getSellerBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getUnpaidBuyers","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasPaid","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"hasPaymentBeenMade","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"isFinshed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"outTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"remaining_Q","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"seller","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"sellerBandwidth","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"x","type":"uint256"}],"name":"sqrt","outputs":[{"internalType":"uint256","name":"y","type":"uint256"}],"stateMutability":"pure","type":"function"},
+            {"inputs":[],"name":"startTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingBandwidths","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingMoneys","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingPrices","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"transferFunds","outputs":[],"stateMutability":"payable","type":"function"},
+            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"urgencies","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"w","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"stateMutability":"payable","type":"receive"}
+        ];
+
+        // Global Variables
+        let web3;
+        let contract;
+        let accounts;
+        let currentAccount;
+        let isAdmin = false;
+        let isBuyer = false;
+        let hasPaidAlready = false;
+
+        // Initialize the app
+        async function init() {
+            try {
+                // Check if MetaMask is installed
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        // Request account access
+                        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        currentAccount = accounts[0];
+                        
+                        // Setup Web3
+                        web3 = new Web3(window.ethereum);
+                        
+                        // Initialize contract
+                        contract = new web3.eth.Contract(contractABI, contractAddress);
+                        
+                        // Update connection status
+                        document.getElementById('connection-status').innerHTML = 
+                            `Connected with: ${shortenAddress(currentAccount)}`;
+                        document.getElementById('connection-status').className = 'status success';
+                        
+                        // Setup MetaMask account change listener
+                        window.ethereum.on('accountsChanged', function (accounts) {
+                            currentAccount = accounts[0];
+                            document.getElementById('connection-status').innerHTML = 
+                                `Connected with: ${shortenAddress(currentAccount)}`;
+                            loadData(); // Reload all data when account changes
+                        });
+
+                        // Load initial data
+                        loadData();
+                        
+                    } catch (error) {
+                        console.error("User denied account access", error);
+                        document.getElementById('connection-status').innerHTML = 
+                            "Error: Please allow MetaMask access";
+                        document.getElementById('connection-status').className = 'status error';
+                    }
+                } else {
+                    document.getElementById('connection-status').innerHTML = 
+                        "Please install MetaMask to use this DApp";
+                    document.getElementById('connection-status').className = 'status error';
+                }
+            } catch (error) {
+                console.error("Error initializing Web3:", error);
+                document.getElementById('connection-status').innerHTML = 
+                    "Error initializing Web3. See console for details.";
+                document.getElementById('connection-status').className = 'status error';
+            }
+        }
+
+        // Load all contract data
+        async function loadData() {
+            try {
+                await loadAuctionInfo();
+                await loadBuyersData();
+                await checkUserRole();
+                await checkBuyerStatus();
+            } catch (error) {
+                console.error("Error loading data:", error);
+                showStatus('connection-status', "Error loading data from contract", 'error');
+            }
+        }
+
+        // Load basic auction information
+        async function loadAuctionInfo() {
+            try {
+                const seller = await contract.methods.seller().call();
+                document.getElementById('seller-address').textContent = shortenAddress(seller);
+                
+                const admin = await contract.methods.admin().call();
+                document.getElementById('admin-address').textContent = shortenAddress(admin);
+                
+                const sellerBandwidth = await contract.methods.sellerBandwidth().call();
+                document.getElementById('seller-bandwidth').textContent = sellerBandwidth;
+                
+                const q = await contract.methods.Q().call();
+                document.getElementById('remaining-bandwidth').textContent = q;
+                
+                const auctionStatus = await contract.methods.getAuctionStatus().call();
+                document.getElementById('auction-status').textContent = auctionStatus.isEnded ? 'Ended' : 'Active';
+                document.getElementById('start-time').textContent = formatTimestamp(auctionStatus.startTimeStamp);
+                document.getElementById('current-user').textContent = auctionStatus.userLogin;
+
+                if (auctionStatus.isEnded) {
+                    disableAuctionInterface();
+                }
+                
+                const buyersCount = await contract.methods.getBuyersCount().call();
+                document.getElementById('buyers-count').textContent = buyersCount;
+                
+            } catch (error) {
+                console.error("Error loading auction info:", error);
+                showStatus('connection-status', "Error loading auction information", 'error');
+            }
+        }
+
+        // Load buyers data into the table
+        async function loadBuyersData() {
+            try {
+                const buyersCount = await contract.methods.getBuyersCount().call();
+                const buyersTableBody = document.getElementById('buyers-data');
+                
+                // Clear existing data
+                buyersTableBody.innerHTML = '';
+                
+                if (buyersCount == 0) {
+                    buyersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No buyers registered yet</td></tr>';
+                    return;
+                }
+                
+                // Get all buyers data in one call
+                const allData = await contract.methods.getAllBuyersData().call();
+                const buyers = allData._buyers;
+                const demands = allData._demands;
+                const capacities = allData._capacities;
+                const urgencies = allData._urgencies;
+                const tradingPrices = allData._tradingPrices;
+                const tradingBandwidths = allData._tradingBandwidths;
+                const tradingMoneys = allData._tradingMoneys;
+                
+                // Add rows for each buyer
+                for (let i = 0; i < buyers.length; i++) {
+                    const hasPaid = await contract.methods.hasPaymentBeenMade(buyers[i]).call();
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${shortenAddress(buyers[i])}</td>
+                        <td>${demands[i]}</td>
+                        <td>${capacities[i]}</td>
+                        <td>${urgencies[i]}</td>
+                        <td>${tradingPrices[i]}</td>
+                        <td>${tradingBandwidths[i]}</td>
+                        <td>${tradingMoneys[i]}</td>
+                        <td>${hasPaid ? '✅ Paid' : '❌ Not Paid'}</td>
+                    `;
+                    
+                    // Highlight the current user's row
+                    if (buyers[i].toLowerCase() === currentAccount.toLowerCase()) {
+                        row.style.backgroundColor = '#f0f8ff';
+                    }
+                    
+                    buyersTableBody.appendChild(row);
+                }
+            } catch (error) {
+                console.error("Error loading buyers data:", error);
+                showStatus('connection-status', "Error loading buyers data", 'error');
+            }
+        }
+
+        // Check if the current user is admin
+        async function checkUserRole() {
+            try {
+                const admin = await contract.methods.admin().call();
+                isAdmin = (admin.toLowerCase() === currentAccount.toLowerCase());
+                
+                // Show/hide admin panel
+                const adminPanel = document.getElementById('admin-panel');
+                adminPanel.style.display = isAdmin ? 'block' : 'none';
+                
+            } catch (error) {
+                console.error("Error checking user role:", error);
+            }
+        }
+
+        // Check if the current user is a registered buyer and payment status
+        async function checkBuyerStatus() {
+            try {
+                const buyersCount = await contract.methods.getBuyersCount().call();
+                isBuyer = false;
+                
+                if (buyersCount > 0) {
+                    const allData = await contract.methods.getAllBuyersData().call();
+                    const buyers = allData._buyers;
+                    
+                    for (let i = 0; i < buyers.length; i++) {
+                        if (buyers[i].toLowerCase() === currentAccount.toLowerCase()) {
+                            isBuyer = true;
+                            
+                            // Check if the buyer has paid
+                            hasPaidAlready = await contract.methods.hasPaymentBeenMade(currentAccount).call();
+                            
+                            // Update buyer info display
+                            document.getElementById('registration-info').textContent = 'Registered';
+                            
+                            // Show payment info
+                            document.getElementById('payment-info-container').classList.remove('hidden');
+                            document.getElementById('payment-info').textContent = hasPaidAlready ? 'Paid' : 'Not Paid';
+                            
+                            if (!hasPaidAlready) {
+                                // Show required payment amount
+                                try {
+                                    const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
+                                    document.getElementById('payment-amount-container').classList.remove('hidden');
+                                    document.getElementById('payment-amount').textContent = paymentAmount;
+                                    
+                                    // Enable payment button if trading money is calculated
+                                    if (paymentAmount > 0) {
+                                        document.getElementById('make-payment').disabled = false;
+                                    }
+                                } catch (error) {
+                                    // This is ok - means that OptimalStrategy hasn't been called yet
+                                    console.log("Trading Money not calculated yet");
+                                }
+                            } else {
+                                // Disable both buttons if already paid
+                                document.getElementById('calculate-optimal').disabled = true;
+                                document.getElementById('make-payment').disabled = true;
+                            }
+                            
+                            break;
+                        }
+                    }
+                }
+                
+                // Update UI based on buyer status
+                if (!isBuyer) {
+                    document.getElementById('registration-info').textContent = 'Not Registered';
+                    document.getElementById('payment-info-container').classList.add('hidden');
+                    document.getElementById('payment-amount-container').classList.add('hidden');
+                    document.getElementById('calculate-optimal').disabled = true;
+                    document.getElementById('make-payment').disabled = true;
+                }
+                
+            } catch (error) {
+                console.error("Error checking buyer status:", error);
+            }
+        }
+
+        // Register as buyer
+        async function registerAsBuyer() {
+            try {
+                const demand = parseInt(document.getElementById('demand').value);
+                const capacity = parseInt(document.getElementById('capacity').value);
+                const urgency = parseInt(document.getElementById('urgency').value);
+                
+                if (!demand || !capacity || !urgency) {
+                    showStatus('registration-status', "Please fill in all fields", 'error');
+                    return;
+                }
+                
+                // Validate demand is between 100 and 500
+                if (demand < 100 || demand > 500) {
+                    showStatus('registration-status', "Demand must be between 100 and 500", 'error');
+                    return;
+                }
+                
+                // Validate urgency is between 0 and 100000
+                if (urgency < 0 || urgency > 100000) {
+                    showStatus('registration-status', "Urgency must be between 0 and 100000", 'error');
+                    return;
+                }
+                
+                showStatus('registration-status', "Registering as buyer...", 'info');
+                
+                // Call the AddBuyer function
+                const tx = await contract.methods.AddBuyer(demand, capacity, urgency).send({ from: currentAccount });
+                
+                showStatus('registration-status', "Successfully registered as buyer!", 'success');
+                
+                // Reload data
+                await loadData();
+                
+            } catch (error) {
+                console.error("Error registering as buyer:", error);
+                showStatus('registration-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Calculate optimal strategy
+        async function calculateOptimal() {
+            try {
+                showStatus('buyer-action-status', "Calculating optimal strategy...", 'info');
+                
+                // Call the OptimalStrategy function
+                const tx = await contract.methods.OptimalStrategy().send({ from: currentAccount });
+                
+                showStatus('buyer-action-status', "Optimal strategy calculated successfully!", 'success');
+                
+                // Reload data
+                await loadData();
+                
+                // Check if payment is needed now
+                try {
+                    const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
+                    document.getElementById('payment-amount-container').classList.remove('hidden');
+                    document.getElementById('payment-amount').textContent = paymentAmount;
+                    
+                    if (paymentAmount > 0) {
+                        document.getElementById('make-payment').disabled = false;
+                    }
+                } catch (error) {
+                    console.error("Error getting payment amount:", error);
+                }
+                
+            } catch (error) {
+                console.error("Error calculating optimal strategy:", error);
+                showStatus('buyer-action-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Make payment
+        async function makePayment() {
+            try {
+                showStatus('buyer-action-status', "Processing payment...", 'info');
+                
+                // Get required payment amount
+                const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
+                
+                // Call the transferFunds function with value
+                const tx = await contract.methods.transferFunds().send({ 
+                    from: currentAccount, 
+                    value: paymentAmount 
+                });
+                
+                showStatus('buyer-action-status', "Payment successful!", 'success');
+                
+                // Reload data
+                await loadData();
+                
+            } catch (error) {
+                console.error("Error making payment:", error);
+                showStatus('buyer-action-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // End auction (admin only)
+        async function endAuction() {
+            try {
+                if (!confirm("Are you sure you want to end the auction? This action cannot be undone.")) {
+                    return;
+                }
+                
+                showStatus('admin-status', "Ending auction...", 'info');
+                
+                // Call the endAuction function
+                const tx = await contract.methods.endAuction().send({ from: currentAccount });
+                
+                showStatus('admin-status', "Auction ended successfully!", 'success');
+                
+                // Reload data
+                await loadData();
+                
+            } catch (error) {
+                console.error("Error ending auction:", error);
+                showStatus('admin-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Helper function to disable the auction interface when auction is ended
+        function disableAuctionInterface() {
+            document.getElementById('register-buyer').disabled = true;
+            document.getElementById('calculate-optimal').disabled = true;
+            document.getElementById('make-payment').disabled = true;
+            document.getElementById('end-auction').disabled = true;
+            
+            showStatus('connection-status', "Auction has ended. No new bids can be placed.", 'info');
+        }
+
+        // Helper function to shorten addresses for display
+        function shortenAddress(address) {
+            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+        }
+
+        // Helper function to format timestamps
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString();
+        }
+
+        // Helper function to show status messages
+        function showStatus(elementId, message, type) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        // Set up event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the app
+            init();
+            
+            // Button event listeners
+            document.getElementById('register-buyer').addEventListener('click', registerAsBuyer);
+            document.getElementById('calculate-optimal').addEventListener('click', calculateOptimal);
+            document.getElementById('make-payment').addEventListener('click', makePayment);
+            document.getElementById('refresh-buyers').addEventListener('click', loadBuyersData);
+            document.getElementById('end-auction').addEventListener('click', endAuction);
+        });
+    </script>
+</body>
+</html>
