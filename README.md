@@ -27,7 +27,7 @@ Ethereum Account: An account with sufficient Ether (ETH) to participate in the a
 ## Installing MetaMask
 MetaMask is available for Google Chrome, Mozilla Firefox, and other browsers. Follow these steps to install MetaMask:
 
-Visit the MetaMask Website:
+Visit the MetaMask Website: https://metamask.io/
 
 Go to the MetaMask website.
 ## Download MetaMask:
