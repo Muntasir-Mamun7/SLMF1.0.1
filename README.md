@@ -24,17 +24,11 @@ To use the auction platform, you need to have the following:
 
 MetaMask: A browser extension that allows you to interact with the Ethereum blockchain.
 Ethereum Account: An account with sufficient Ether (ETH) to participate in the auction.
+
 ## Installing MetaMask
 MetaMask is available for Google Chrome, Mozilla Firefox, and other browsers. Follow these steps to install MetaMask:
+1. Visit the MetaMask Website: https://metamask.io/
+2. Download MetaMask:
+3. Add MetaMask Extension:
 
-Visit the MetaMask Website: https://metamask.io/
 
-Go to the MetaMask website.
-## Download MetaMask:
-
-Click on the "Download" button.
-Select your browser and click "Install MetaMask for [Your Browser]".
-Add MetaMask Extension:
-
-Follow the instructions to add the MetaMask extension to your browser.
-Once installed, you will see the MetaMask icon in your browser's toolbar.
