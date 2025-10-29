@@ -66,6 +66,10 @@
         button.danger:hover {
             background-color: #c0392b;
         }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -108,16 +112,11 @@
     <div style="display: flex; align-items: flex-start;padding-top: 10px;">
         <!-- Left Section: Image + Heading + Text Below -->
         <div style="flex: 0 0 auto; width: 400px; padding: 10px;padding-top: 100px">
-            <!-- Heading Above the Image -->
-            
-    
             <!-- Image -->
             <img src="SLMF.png" alt="SLMF Logo" style="max-width: 100%; height: auto;">
-    
+            
             <!-- Text Below the Image -->
-            <h1 style="font-size: 18px; margin: 0; text-align: left;">Blockchain-based spectrum sharing system for aerial networks
-
-            </h1>
+            <h1 style="font-size: 18px; margin: 0; text-align: left;">Blockchain-based spectrum sharing system for aerial networks</h1>
         </div>
     
         
@@ -199,941 +198,933 @@
     <div class="card" id="admin-panel">
         <h2>Admin Panel</h2>
         <button id="end-auction" class="danger">End Auction</button>
+        <button id="reset-auction" class="secondary">🔄 Reset Auction</button>
         <div id="admin-status"></div>
     </div>
 </div>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
-        // Contract details
-        const contractAddress = "0x2b429a8c88C751dda4ca018f467fcE63aE59019b";
+        // Contract details - UPDATED WITH YOUR NEW CONTRACT
+        const contractAddress = "0x2D13e1Ddf86217beE712d46c98A7CdF1912A3B10";
         const contractABI = [
-        [
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "_demand",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_Capacity",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_Urgency",
-                    "type": "uint256"
-                }
-            ],
-            "name": "AddBuyer",
-            "outputs": [],
-            "stateMutability": "payable",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address payable",
-                    "name": "_seller",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_sellerBandwidth",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "string",
-                    "name": "_currentUser",
-                    "type": "string"
-                }
-            ],
-            "stateMutability": "nonpayable",
-            "type": "constructor"
-        },
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "startTime",
-                    "type": "uint256"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "string",
-                    "name": "currentUser",
-                    "type": "string"
-                }
-            ],
-            "name": "AuctionStarted",
-            "type": "event"
-        },
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": false,
-                    "internalType": "address",
-                    "name": "buyerAddress",
-                    "type": "address"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "index",
-                    "type": "uint256"
-                }
-            ],
-            "name": "BuyerAdded",
-            "type": "event"
-        },
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": false,
-                    "internalType": "address",
-                    "name": "_seller",
-                    "type": "address"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "_remaining_Q",
-                    "type": "uint256"
-                }
-            ],
-            "name": "End_Auction",
-            "type": "event"
-        },
-        {
-            "inputs": [],
-            "name": "endAuction",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        },
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": false,
-                    "internalType": "address",
-                    "name": "buyerAddress",
-                    "type": "address"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "amount",
-                    "type": "uint256"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "bool",
-                    "name": "success",
-                    "type": "bool"
-                }
-            ],
-            "name": "FundTransfer",
-            "type": "event"
-        },
-        {
-            "anonymous": false,
-            "inputs": [
-                {
-                    "indexed": false,
-                    "internalType": "address",
-                    "name": "_UAVAddress",
-                    "type": "address"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "_price",
-                    "type": "uint256"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "_TradingBandwidth",
-                    "type": "uint256"
-                },
-                {
-                    "indexed": false,
-                    "internalType": "uint256",
-                    "name": "_TradingMoney",
-                    "type": "uint256"
-                }
-            ],
-            "name": "Optimal",
-            "type": "event"
-        },
-        {
-            "inputs": [],
-            "name": "OptimalStrategy",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "transferFunds",
-            "outputs": [],
-            "stateMutability": "payable",
-            "type": "function"
-        },
-        {
-            "stateMutability": "payable",
-            "type": "receive"
-        },
-        {
-            "inputs": [],
-            "name": "admin",
-            "outputs": [
-                {
-                    "internalType": "address payable",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "alpha",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "autionName",
-            "outputs": [
-                {
-                    "internalType": "string",
-                    "name": "",
-                    "type": "string"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "beta",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "buyerAddresses",
-            "outputs": [
-                {
-                    "internalType": "address",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "name": "buyerPayments",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "capacities",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "Capacity",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "currentUser",
-            "outputs": [
-                {
-                    "internalType": "string",
-                    "name": "",
-                    "type": "string"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "danwei",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "demand",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "demands",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "deploymentTime",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "eta",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getAllBuyersData",
-            "outputs": [
-                {
-                    "internalType": "address[]",
-                    "name": "_buyers",
-                    "type": "address[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_demands",
-                    "type": "uint256[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_capacities",
-                    "type": "uint256[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_urgencies",
-                    "type": "uint256[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_tradingPrices",
-                    "type": "uint256[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_tradingBandwidths",
-                    "type": "uint256[]"
-                },
-                {
-                    "internalType": "uint256[]",
-                    "name": "_tradingMoneys",
-                    "type": "uint256[]"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getAuctionStatus",
-            "outputs": [
-                {
-                    "internalType": "bool",
-                    "name": "isEnded",
-                    "type": "bool"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "startTimeStamp",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "endTimeStamp",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "remainingQuantity",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "string",
-                    "name": "userLogin",
-                    "type": "string"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "_buyer",
-                    "type": "address"
-                }
-            ],
-            "name": "getBuyerBalance",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "index",
-                    "type": "uint256"
-                }
-            ],
-            "name": "getBuyerData",
-            "outputs": [
-                {
-                    "internalType": "address",
-                    "name": "buyerAddress",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_demand",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_capacity",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_urgency",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_tradingPrice",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_tradingBandwidth",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "_tradingMoney",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "buyer",
-                    "type": "address"
-                }
-            ],
-            "name": "getBuyerPaymentAmount",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getBuyersCount",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getRequiredPaymentAmount",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getSellerBalance",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "getUnpaidBuyers",
-            "outputs": [
-                {
-                    "internalType": "address[]",
-                    "name": "",
-                    "type": "address[]"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "name": "hasPaid",
-            "outputs": [
-                {
-                    "internalType": "bool",
-                    "name": "",
-                    "type": "bool"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "buyer",
-                    "type": "address"
-                }
-            ],
-            "name": "hasPaymentBeenMade",
-            "outputs": [
-                {
-                    "internalType": "bool",
-                    "name": "",
-                    "type": "bool"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "isFinshed",
-            "outputs": [
-                {
-                    "internalType": "bool",
-                    "name": "",
-                    "type": "bool"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "MAX_URGENCY",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "MIN_URGENCY",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "outTime",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "Q",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "remaining_Q",
-            "outputs": [
-                {
-                    "internalType": "int256",
-                    "name": "",
-                    "type": "int256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "seller",
-            "outputs": [
-                {
-                    "internalType": "address payable",
-                    "name": "",
-                    "type": "address"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "sellerBandwidth",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "x",
-                    "type": "uint256"
-                }
-            ],
-            "name": "sqrt",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "y",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "pure",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "startTime",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "tradingBandwidths",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "tradingMoneys",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "tradingPrices",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "name": "urgencies",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "Urgency",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        },
-        {
-            "inputs": [],
-            "name": "w",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "view",
-            "type": "function"
-        }
-    ],
-            {"inputs":[{"internalType":"address payable","name":"_seller","type":"address"},{"internalType":"uint256","name":"_sellerBandwidth","type":"uint256"},{"internalType":"string","name":"_currentUser","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},
-            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"startTime","type":"uint256"},{"indexed":false,"internalType":"string","name":"currentUser","type":"string"}],"name":"AuctionStarted","type":"event"},
-            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"buyerAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"}],"name":"BuyerAdded","type":"event"},
-            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"_seller","type":"address"},{"indexed":false,"internalType":"uint256","name":"_remaining_Q","type":"uint256"}],"name":"End_Auction","type":"event"},
-            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"buyerAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bool","name":"success","type":"bool"}],"name":"FundTransfer","type":"event"},
-            {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"_UAVAddress","type":"address"},{"indexed":false,"internalType":"uint256","name":"_price","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_TradingBandwidth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_TradingMoney","type":"uint256"}],"name":"Optimal","type":"event"},
-            {"inputs":[{"internalType":"uint256","name":"_demand","type":"uint256"},{"internalType":"uint256","name":"_Capacity","type":"uint256"},{"internalType":"uint256","name":"_Urgency","type":"uint256"}],"name":"AddBuyer","outputs":[],"stateMutability":"payable","type":"function"},
-            {"inputs":[],"name":"OptimalStrategy","outputs":[],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[],"name":"Q","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"admin","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"alpha","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"autionName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"beta","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"buyerAddresses","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"buyerPayments","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"capacities","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"currentUser","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"demands","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"deploymentTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"endAuction","outputs":[],"stateMutability":"nonpayable","type":"function"},
-            {"inputs":[],"name":"eta","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getAllBuyersData","outputs":[{"internalType":"address[]","name":"_buyers","type":"address[]"},{"internalType":"uint256[]","name":"_demands","type":"uint256[]"},{"internalType":"uint256[]","name":"_capacities","type":"uint256[]"},{"internalType":"uint256[]","name":"_urgencies","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingPrices","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingBandwidths","type":"uint256[]"},{"internalType":"uint256[]","name":"_tradingMoneys","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getAuctionStatus","outputs":[{"internalType":"bool","name":"isEnded","type":"bool"},{"internalType":"uint256","name":"startTimeStamp","type":"uint256"},{"internalType":"uint256","name":"endTimeStamp","type":"uint256"},{"internalType":"uint256","name":"remainingQuantity","type":"uint256"},{"internalType":"string","name":"userLogin","type":"string"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"_buyer","type":"address"}],"name":"getBuyerBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"index","type":"uint256"}],"name":"getBuyerData","outputs":[{"internalType":"address","name":"buyerAddress","type":"address"},{"internalType":"uint256","name":"_demand","type":"uint256"},{"internalType":"uint256","name":"_capacity","type":"uint256"},{"internalType":"uint256","name":"_urgency","type":"uint256"},{"internalType":"uint256","name":"_tradingPrice","type":"uint256"},{"internalType":"uint256","name":"_tradingBandwidth","type":"uint256"},{"internalType":"uint256","name":"_tradingMoney","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"getBuyerPaymentAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getBuyersCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getRequiredPaymentAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getSellerBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"getUnpaidBuyers","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasPaid","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"hasPaymentBeenMade","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"isFinshed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"outTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"remaining_Q","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"seller","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"sellerBandwidth","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"x","type":"uint256"}],"name":"sqrt","outputs":[{"internalType":"uint256","name":"y","type":"uint256"}],"stateMutability":"pure","type":"function"},
-            {"inputs":[],"name":"startTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingBandwidths","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingMoneys","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"tradingPrices","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"transferFunds","outputs":[],"stateMutability":"payable","type":"function"},
-            {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"urgencies","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[],"name":"w","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"stateMutability":"payable","type":"receive"}
+            {
+                "inputs": [
+                    {
+                        "internalType": "address payable",
+                        "name": "_seller",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_sellerBandwidth",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "_currentUser",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "newStartTime",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "resetBy",
+                        "type": "address"
+                    }
+                ],
+                "name": "AuctionReset",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "startTime",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "string",
+                        "name": "currentUser",
+                        "type": "string"
+                    }
+                ],
+                "name": "AuctionStarted",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "buyerAddress",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "index",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "BuyerAdded",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "_seller",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "_remaining_Q",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "End_Auction",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "buyerAddress",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "bool",
+                        "name": "success",
+                        "type": "bool"
+                    }
+                ],
+                "name": "FundTransfer",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "_UAVAddress",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "_price",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "_TradingBandwidth",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "_TradingMoney",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "Optimal",
+                "type": "event"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "_demand",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_Capacity",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_Urgency",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "AddBuyer",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "OptimalStrategy",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "endAuction",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "resetAuction",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "transferFunds",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "stateMutability": "payable",
+                "type": "receive"
+            },
+            {
+                "inputs": [],
+                "name": "admin",
+                "outputs": [
+                    {
+                        "internalType": "address payable",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "alpha",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "autionName",
+                "outputs": [
+                    {
+                        "internalType": "string",
+                        "name": "",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "beta",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "buyerAddresses",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "name": "buyerPayments",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "capacities",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "Capacity",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "currentUser",
+                "outputs": [
+                    {
+                        "internalType": "string",
+                        "name": "",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "danwei",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "demand",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "demands",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "deploymentTime",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "eta",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getAllBuyersData",
+                "outputs": [
+                    {
+                        "internalType": "address[]",
+                        "name": "_buyers",
+                        "type": "address[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_demands",
+                        "type": "uint256[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_capacities",
+                        "type": "uint256[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_urgencies",
+                        "type": "uint256[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_tradingPrices",
+                        "type": "uint256[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_tradingBandwidths",
+                        "type": "uint256[]"
+                    },
+                    {
+                        "internalType": "uint256[]",
+                        "name": "_tradingMoneys",
+                        "type": "uint256[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getAuctionStatus",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "isEnded",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "startTimeStamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "endTimeStamp",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "remainingQuantity",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "userLogin",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "_buyer",
+                        "type": "address"
+                    }
+                ],
+                "name": "getBuyerBalance",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "index",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "getBuyerData",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "buyerAddress",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_demand",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_capacity",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_urgency",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_tradingPrice",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_tradingBandwidth",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_tradingMoney",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "buyer",
+                        "type": "address"
+                    }
+                ],
+                "name": "getBuyerPaymentAmount",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getBuyersCount",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getPriceScalingFactor",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "pure",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getRequiredPaymentAmount",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getSellerBalance",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getUnpaidBuyers",
+                "outputs": [
+                    {
+                        "internalType": "address[]",
+                        "name": "",
+                        "type": "address[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "name": "hasPaid",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "buyer",
+                        "type": "address"
+                    }
+                ],
+                "name": "hasPaymentBeenMade",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "isFinshed",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "MAX_URGENCY",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "MIN_URGENCY",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "outTime",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "Q",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "remaining_Q",
+                "outputs": [
+                    {
+                        "internalType": "int256",
+                        "name": "",
+                        "type": "int256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "seller",
+                "outputs": [
+                    {
+                        "internalType": "address payable",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "sellerBandwidth",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "x",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "sqrt",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "y",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "pure",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "startTime",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "tradingBandwidths",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "tradingMoneys",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "tradingPrices",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "urgencies",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "Urgency",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "w",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
         ];
 
         // Global Variables
@@ -1231,6 +1222,13 @@
 
                 if (auctionStatus.isEnded) {
                     disableAuctionInterface();
+                    // Enable reset button for admin
+                    if (isAdmin) {
+                        document.getElementById('reset-auction').disabled = false;
+                    }
+                } else {
+                    // Disable reset button when auction is active
+                    document.getElementById('reset-auction').disabled = true;
                 }
                 
                 const buyersCount = await contract.methods.getBuyersCount().call();
@@ -1296,27 +1294,27 @@
         }
 
         // Check if the current user is an admin
-async function checkUserRole() {
-    try {
-        const admin = await contract.methods.admin().call();
-        
-        // Demo admin addresses (for demonstration purposes)
-        const demoAdmins = [
-            "0x613051d0F7f7D0760f34a5aB815b8BFE159cAF55",
-            "0x6185a8fc6d973f54c5aDe7f7Be0D03B55a5C8D1D"
-        ];
-        
-        isAdmin = (admin.toLowerCase() === currentAccount.toLowerCase()) ||
-                  demoAdmins.some(addr => addr.toLowerCase() === currentAccount.toLowerCase());
-        
-        // Show/hide admin panel
-        const adminPanel = document.getElementById('admin-panel');
-        adminPanel.style.display = isAdmin ? 'block' : 'none';
-        
-    } catch (error) {
-        console.error("Error checking user role:", error);
-    }
-}
+        async function checkUserRole() {
+            try {
+                const admin = await contract.methods.admin().call();
+                
+                // Demo admin addresses (for demonstration purposes)
+                const demoAdmins = [
+                    "0x613051d0F7f7D0760f34a5aB815b8BFE159cAF55",
+                    "0x6185a8fc6d973f54c5aDe7f7Be0D03B55a5C8D1D"
+                ];
+                
+                isAdmin = (admin.toLowerCase() === currentAccount.toLowerCase()) ||
+                          demoAdmins.some(addr => addr.toLowerCase() === currentAccount.toLowerCase());
+                
+                // Show/hide admin panel
+                const adminPanel = document.getElementById('admin-panel');
+                adminPanel.style.display = isAdmin ? 'block' : 'none';
+                
+            } catch (error) {
+                console.error("Error checking user role:", error);
+            }
+        }
 
         // Check if the current user is a registered buyer and payment status
         async function checkBuyerStatus() {
@@ -1512,6 +1510,32 @@ async function checkUserRole() {
             }
         }
 
+        // 🔄 NEW FUNCTION: Reset auction (admin only)
+        async function resetAuction() {
+            try {
+                if (!confirm("Are you sure you want to reset the auction? This will clear all buyer data and start fresh.")) {
+                    return;
+                }
+                
+                showStatus('admin-status', "Resetting auction...", 'info');
+                
+                // Call the resetAuction function with gas limit
+                const tx = await contract.methods.resetAuction().send({ 
+                    from: currentAccount,
+                    gas: 2000000
+                });
+                
+                showStatus('admin-status', "🎉 Auction reset successfully! You can now register new buyers.", 'success');
+                
+                // Reload data
+                await loadData();
+                
+            } catch (error) {
+                console.error("Error resetting auction:", error);
+                showStatus('admin-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
         // Helper function to disable the auction interface when auction is ended
         function disableAuctionInterface() {
             document.getElementById('register-buyer').disabled = true;
@@ -1519,7 +1543,7 @@ async function checkUserRole() {
             document.getElementById('make-payment').disabled = true;
             document.getElementById('end-auction').disabled = true;
             
-            showStatus('connection-status', "Auction has ended. No new bids can be placed.", 'info');
+            showStatus('connection-status', "Auction has ended. Admin can reset to start a new round.", 'info');
         }
 
         // Helper function to shorten addresses for display
@@ -1551,6 +1575,7 @@ async function checkUserRole() {
             document.getElementById('make-payment').addEventListener('click', makePayment);
             document.getElementById('refresh-buyers').addEventListener('click', loadBuyersData);
             document.getElementById('end-auction').addEventListener('click', endAuction);
+            document.getElementById('reset-auction').addEventListener('click', resetAuction); // 🔄 NEW!
         });
     </script>
 </body>
