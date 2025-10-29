@@ -103,6 +103,10 @@
             background-color: #d1ecf1;
             color: #0c5460;
         }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
         .hidden {
             display: none;
         }
@@ -114,6 +118,23 @@
             margin-top: 10px;
             font-family: monospace;
             font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .metamask-help {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .metamask-help h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .metamask-help ol {
+            margin: 10px 0;
+            padding-left: 25px;
         }
     </style>
 </head>
@@ -133,6 +154,23 @@
     <h1>Bandwidth Auction DApp</h1>
     
     <div id="connection-status" class="status info">Connecting to MetaMask...</div>
+    
+    <!-- MetaMask Error Help Section -->
+    <div id="metamask-help" class="metamask-help hidden">
+        <h3>⚠️ MetaMask Circuit Breaker Issue Detected</h3>
+        <p><strong>This error occurs when MetaMask detects too many requests. Follow these steps:</strong></p>
+        <ol>
+            <li>Close this browser tab completely</li>
+            <li>Open MetaMask extension</li>
+            <li>Click on your account icon (top right)</li>
+            <li>Go to <strong>Settings → Advanced</strong></li>
+            <li>Click "<strong>Clear activity tab data</strong>"</li>
+            <li>Click "<strong>Reset Account</strong>" (this only clears transaction history, won't affect your funds)</li>
+            <li>Refresh this page</li>
+        </ol>
+        <p><em>Alternative: Restart your browser or wait 5-10 minutes</em></p>
+        <button id="retry-connection" class="secondary">🔄 Retry Connection</button>
+    </div>
     
     <!-- Debug Info Section -->
     <div id="debug-info" class="debug-info" style="display: none;">
@@ -217,6 +255,7 @@
         <button id="reset-auction" class="secondary">🔄 Reset Auction</button>
         <div id="admin-status"></div>
     </div>
+</div>
 </div>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
@@ -1151,6 +1190,10 @@
         let isAdmin = false;
         let isBuyer = false;
         let hasPaidAlready = false;
+        let isCircuitBreakerError = false;
+
+        // Utility function to add delays between calls
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // Debug function
         function addDebugInfo(message) {
@@ -1161,7 +1204,27 @@
             console.log(message);
         }
 
-        // Initialize the app
+        // Show MetaMask help section
+        function showMetaMaskHelp(show = true) {
+            const helpSection = document.getElementById('metamask-help');
+            if (show) {
+                helpSection.classList.remove('hidden');
+                isCircuitBreakerError = true;
+            } else {
+                helpSection.classList.add('hidden');
+                isCircuitBreakerError = false;
+            }
+        }
+
+        // Check if error is circuit breaker error
+        function isCircuitBreakerIssue(error) {
+            const errorMessage = error.message || error.toString();
+            return errorMessage.includes('circuit breaker') || 
+                   errorMessage.includes('isBrokenCircuitError') ||
+                   errorMessage.includes('Execution prevented');
+        }
+
+        // Initialize the app with better error handling
         async function init() {
             try {
                 addDebugInfo('🚀 Initializing DApp...');
@@ -1171,6 +1234,9 @@
                     addDebugInfo('✅ MetaMask detected');
                     
                     try {
+                        // Add delay before requesting accounts
+                        await delay(500);
+                        
                         // Request account access
                         accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                         currentAccount = accounts[0];
@@ -1180,7 +1246,8 @@
                         web3 = new Web3(window.ethereum);
                         addDebugInfo('✅ Web3 initialized');
                         
-                        // Get network info
+                        // Get network info with delay
+                        await delay(300);
                         const networkId = await web3.eth.net.getId();
                         const networkType = await web3.eth.net.getNetworkType();
                         addDebugInfo(`📡 Network ID: ${networkId}, Type: ${networkType}`);
@@ -1200,25 +1267,34 @@
                             document.getElementById('connection-status').innerHTML = 
                                 `Connected with: ${shortenAddress(currentAccount)}`;
                             addDebugInfo(`🔄 Account changed to: ${currentAccount}`);
-                            loadData();
+                            setTimeout(() => loadData(), 1000); // Delay reload
                         });
 
                         // Setup network change listener
                         window.ethereum.on('chainChanged', function(chainId) {
                             addDebugInfo(`🔄 Network changed to: ${chainId}`);
-                            window.location.reload();
+                            setTimeout(() => window.location.reload(), 1000);
                         });
 
-                        // Load initial data
+                        // Load initial data with delay
+                        await delay(500);
                         await loadData();
                         addDebugInfo('✅ Initial data loaded');
                         
                     } catch (error) {
-                        console.error("User denied account access", error);
+                        console.error("Error during initialization", error);
                         addDebugInfo(`❌ Error: ${error.message}`);
-                        document.getElementById('connection-status').innerHTML = 
-                            "Error: Please allow MetaMask access";
-                        document.getElementById('connection-status').className = 'status error';
+                        
+                        if (isCircuitBreakerIssue(error)) {
+                            showMetaMaskHelp(true);
+                            document.getElementById('connection-status').innerHTML = 
+                                "⚠️ MetaMask Circuit Breaker Error - Follow instructions below";
+                            document.getElementById('connection-status').className = 'status warning';
+                        } else {
+                            document.getElementById('connection-status').innerHTML = 
+                                "Error: " + error.message;
+                            document.getElementById('connection-status').className = 'status error';
+                        }
                     }
                 } else {
                     addDebugInfo('❌ MetaMask not detected');
@@ -1229,18 +1305,33 @@
             } catch (error) {
                 console.error("Error initializing Web3:", error);
                 addDebugInfo(`❌ Fatal error: ${error.message}`);
-                document.getElementById('connection-status').innerHTML = 
-                    "Error initializing Web3. See console for details.";
-                document.getElementById('connection-status').className = 'status error';
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
             }
         }
 
-        // Test contract connection
+        // Retry connection after circuit breaker fix
+        async function retryConnection() {
+            addDebugInfo('🔄 Retrying connection...');
+            showMetaMaskHelp(false);
+            
+            // Clear debug info
+            document.getElementById('debug-text').innerHTML = '';
+            
+            // Reinitialize
+            await delay(1000);
+            await init();
+        }
+
+        // Test contract connection with delays
         async function testContract() {
             try {
                 addDebugInfo('🧪 Testing contract methods...');
                 
                 // Test 1: Check contract code
+                await delay(300);
                 const code = await web3.eth.getCode(contractAddress);
                 if (code === '0x' || code === '0x0') {
                     addDebugInfo('❌ No contract found at this address!');
@@ -1250,10 +1341,12 @@
                 addDebugInfo('✅ Contract code exists at address');
                 
                 // Test 2: Get seller
+                await delay(300);
                 const seller = await contract.methods.seller().call();
                 addDebugInfo(`✅ Seller: ${seller}`);
                 
                 // Test 3: Get buyers count
+                await delay(300);
                 const buyersCount = await contract.methods.getBuyersCount().call();
                 addDebugInfo(`✅ Buyers count: ${buyersCount}`);
                 
@@ -1264,9 +1357,13 @@
                 // Test 5: Try to call getAllBuyersData
                 if (buyersCount > 0) {
                     try {
+                        await delay(300);
                         const allData = await contract.methods.getAllBuyersData().call();
                         addDebugInfo(`✅ getAllBuyersData returned ${allData._buyers.length} buyers`);
                     } catch (err) {
+                        if (isCircuitBreakerIssue(err)) {
+                            showMetaMaskHelp(true);
+                        }
                         addDebugInfo(`⚠️ getAllBuyersData failed: ${err.message}`);
                     }
                 }
@@ -1277,44 +1374,62 @@
             } catch (error) {
                 console.error("Contract test failed:", error);
                 addDebugInfo(`❌ Contract test failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('connection-status', `Contract test failed: ${error.message}`, 'error');
                 return false;
             }
         }
 
-        // Load all contract data
+        // Load all contract data with delays
         async function loadData() {
             try {
                 addDebugInfo('📊 Loading contract data...');
                 await loadAuctionInfo();
+                await delay(300);
                 await loadBuyersData();
+                await delay(300);
                 await checkUserRole();
+                await delay(300);
                 await checkBuyerStatus();
                 addDebugInfo('✅ All data loaded successfully');
             } catch (error) {
                 console.error("Error loading data:", error);
                 addDebugInfo(`❌ Error loading data: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('connection-status', "Error loading data from contract", 'error');
             }
         }
 
-        // Load basic auction information
+        // Load basic auction information with delays
         async function loadAuctionInfo() {
             try {
                 addDebugInfo('📋 Loading auction info...');
                 
+                await delay(200);
                 const seller = await contract.methods.seller().call();
                 document.getElementById('seller-address').textContent = shortenAddress(seller);
                 
+                await delay(200);
                 const admin = await contract.methods.admin().call();
                 document.getElementById('admin-address').textContent = shortenAddress(admin);
                 
+                await delay(200);
                 const sellerBandwidth = await contract.methods.sellerBandwidth().call();
                 document.getElementById('seller-bandwidth').textContent = sellerBandwidth;
                 
+                await delay(200);
                 const q = await contract.methods.Q().call();
                 document.getElementById('remaining-bandwidth').textContent = q;
                 
+                await delay(200);
                 const auctionStatus = await contract.methods.getAuctionStatus().call();
                 document.getElementById('auction-status').textContent = auctionStatus.isEnded ? 'Ended' : 'Active';
                 document.getElementById('start-time').textContent = formatTimestamp(auctionStatus.startTimeStamp);
@@ -1329,6 +1444,7 @@
                     document.getElementById('reset-auction').disabled = true;
                 }
                 
+                await delay(200);
                 const buyersCount = await contract.methods.getBuyersCount().call();
                 document.getElementById('buyers-count').textContent = buyersCount;
                 
@@ -1337,15 +1453,21 @@
             } catch (error) {
                 console.error("Error loading auction info:", error);
                 addDebugInfo(`❌ Error loading auction info: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('connection-status', "Error loading auction information", 'error');
             }
         }
 
-        // Load buyers data into the table with improved error handling
+        // Load buyers data with delays and improved error handling
         async function loadBuyersData() {
             try {
                 addDebugInfo('👥 Loading buyers data...');
                 
+                await delay(200);
                 const buyersCount = await contract.methods.getBuyersCount().call();
                 addDebugInfo(`📊 Buyers count: ${buyersCount}`);
                 
@@ -1360,9 +1482,10 @@
                     return;
                 }
                 
-                // Method 1: Try getAllBuyersData first (faster)
+                // Method 1: Try getAllBuyersData first
                 try {
                     addDebugInfo('🔄 Attempting to load all buyers at once...');
+                    await delay(300);
                     const allData = await contract.methods.getAllBuyersData().call();
                     const buyers = allData._buyers;
                     const demands = allData._demands;
@@ -1376,6 +1499,7 @@
                     
                     // Add rows for each buyer
                     for (let i = 0; i < buyers.length; i++) {
+                        await delay(150); // Add delay between payment checks
                         const hasPaid = await contract.methods.hasPaymentBeenMade(buyers[i]).call();
                         
                         const row = document.createElement('tr');
@@ -1404,12 +1528,21 @@
                     // Method 2: Fallback to loading one by one
                     console.error("Error calling getAllBuyersData:", innerError);
                     addDebugInfo(`⚠️ getAllBuyersData failed: ${innerError.message}`);
+                    
+                    if (isCircuitBreakerIssue(innerError)) {
+                        showMetaMaskHelp(true);
+                        throw innerError;
+                    }
+                    
                     addDebugInfo('🔄 Trying fallback method (loading one by one)...');
                     
                     let successCount = 0;
                     for (let i = 0; i < buyersCount; i++) {
                         try {
+                            await delay(300); // Longer delay for fallback method
                             const buyerData = await contract.methods.getBuyerData(i).call();
+                            
+                            await delay(200);
                             const hasPaid = await contract.methods.hasPaymentBeenMade(buyerData.buyerAddress).call();
                             
                             const row = document.createElement('tr');
@@ -1435,6 +1568,11 @@
                         } catch (buyerError) {
                             console.error(`Error loading buyer ${i}:`, buyerError);
                             addDebugInfo(`⚠️ Error loading buyer ${i}: ${buyerError.message}`);
+                            
+                            if (isCircuitBreakerIssue(buyerError)) {
+                                showMetaMaskHelp(true);
+                                throw buyerError;
+                            }
                         }
                     }
                     
@@ -1448,17 +1586,24 @@
             } catch (error) {
                 console.error("Error loading buyers data:", error);
                 addDebugInfo(`❌ Critical error loading buyers data: ${error.message}`);
-                showStatus('connection-status', `Error loading buyers data: ${error.message}`, 'error');
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                    showStatus('connection-status', '⚠️ MetaMask Circuit Breaker - Follow instructions above', 'warning');
+                } else {
+                    showStatus('connection-status', `Error loading buyers data: ${error.message}`, 'error');
+                }
                 
                 // Still show an error message in the table
                 const buyersTableBody = document.getElementById('buyers-data');
-                buyersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Error loading data. Check console and debug info for details.</td></tr>';
+                buyersTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Error loading data. Check debug info for details.</td></tr>';
             }
         }
 
         // Check if the current user is an admin
         async function checkUserRole() {
             try {
+                await delay(200);
                 const admin = await contract.methods.admin().call();
                 
                 // Demo admin addresses
@@ -1479,18 +1624,24 @@
             } catch (error) {
                 console.error("Error checking user role:", error);
                 addDebugInfo(`❌ Error checking admin role: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
             }
         }
 
-        // Check if the current user is a registered buyer and payment status
+        // Check if the current user is a registered buyer
         async function checkBuyerStatus() {
             try {
                 addDebugInfo('🔍 Checking buyer status...');
                 
+                await delay(200);
                 const buyersCount = await contract.methods.getBuyersCount().call();
                 isBuyer = false;
                 
                 if (buyersCount > 0) {
+                    await delay(200);
                     const allData = await contract.methods.getAllBuyersData().call();
                     const buyers = allData._buyers;
                     
@@ -1500,6 +1651,7 @@
                             addDebugInfo('✅ Current user is a registered buyer');
                             
                             // Check if the buyer has paid
+                            await delay(200);
                             hasPaidAlready = await contract.methods.hasPaymentBeenMade(currentAccount).call();
                             addDebugInfo(`💰 Payment status: ${hasPaidAlready ? 'PAID' : 'NOT PAID'}`);
                             
@@ -1513,6 +1665,7 @@
                             if (!hasPaidAlready) {
                                 // Show required payment amount
                                 try {
+                                    await delay(200);
                                     const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
                                     document.getElementById('payment-amount-container').classList.remove('hidden');
                                     document.getElementById('payment-amount').textContent = paymentAmount;
@@ -1549,6 +1702,10 @@
             } catch (error) {
                 console.error("Error checking buyer status:", error);
                 addDebugInfo(`❌ Error checking buyer status: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
             }
         }
 
@@ -1564,13 +1721,11 @@
                     return;
                 }
                 
-                // Validate demand is between 100 and 500
                 if (demand < 100 || demand > 500) {
                     showStatus('registration-status', "Demand must be between 100 and 500", 'error');
                     return;
                 }
                 
-                // Validate urgency is between 0 and 100000
                 if (urgency < 0 || urgency > 100000) {
                     showStatus('registration-status', "Urgency must be between 0 and 100000", 'error');
                     return;
@@ -1579,7 +1734,6 @@
                 showStatus('registration-status', "Registering as buyer...", 'info');
                 addDebugInfo(`📝 Registering buyer: demand=${demand}, capacity=${capacity}, urgency=${urgency}`);
                 
-                // Call the AddBuyer function with gas limit
                 const tx = await contract.methods.AddBuyer(demand, capacity, urgency).send({ 
                     from: currentAccount,
                     gas: 1000000
@@ -1588,12 +1742,18 @@
                 addDebugInfo(`✅ Transaction hash: ${tx.transactionHash}`);
                 showStatus('registration-status', "Successfully registered as buyer!", 'success');
                 
-                // Reload data
+                // Reload data with delay
+                await delay(1000);
                 await loadData();
                 
             } catch (error) {
                 console.error("Error registering as buyer:", error);
                 addDebugInfo(`❌ Registration failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('registration-status', `Error: ${error.message}`, 'error');
             }
         }
@@ -1604,7 +1764,6 @@
                 showStatus('buyer-action-status', "Calculating optimal strategy...", 'info');
                 addDebugInfo('🧮 Calculating optimal strategy...');
                 
-                // Call the OptimalStrategy function with gas limit
                 const tx = await contract.methods.OptimalStrategy().send({ 
                     from: currentAccount,
                     gas: 3000000
@@ -1613,11 +1772,13 @@
                 addDebugInfo(`✅ Optimal strategy calculated. TX: ${tx.transactionHash}`);
                 showStatus('buyer-action-status', "Optimal strategy calculated successfully!", 'success');
                 
-                // Reload data
+                // Reload data with delay
+                await delay(1000);
                 await loadData();
                 
-                // Check if payment is needed now
+                // Check if payment is needed
                 try {
+                    await delay(300);
                     const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
                     document.getElementById('payment-amount-container').classList.remove('hidden');
                     document.getElementById('payment-amount').textContent = paymentAmount;
@@ -1632,17 +1793,23 @@
             } catch (error) {
                 console.error("Error calculating optimal strategy:", error);
                 addDebugInfo(`❌ Calculate optimal failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('buyer-action-status', `Error: ${error.message}`, 'error');
             }
         }
 
-        // Make payment
+                // Make payment
         async function makePayment() {
             try {
                 showStatus('buyer-action-status', "Processing payment...", 'info');
                 addDebugInfo('💸 Processing payment...');
                 
                 // Get required payment amount
+                await delay(300);
                 const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
                 addDebugInfo(`💰 Payment amount: ${paymentAmount} wei`);
                 
@@ -1656,12 +1823,18 @@
                 addDebugInfo(`✅ Payment successful. TX: ${tx.transactionHash}`);
                 showStatus('buyer-action-status', "Payment successful!", 'success');
                 
-                // Reload data
+                // Reload data with delay
+                await delay(1000);
                 await loadData();
                 
             } catch (error) {
                 console.error("Error making payment:", error);
                 addDebugInfo(`❌ Payment failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('buyer-action-status', `Error: ${error.message}`, 'error');
             }
         }
@@ -1685,12 +1858,18 @@
                 addDebugInfo(`✅ Auction ended. TX: ${tx.transactionHash}`);
                 showStatus('admin-status', "Auction ended successfully!", 'success');
                 
-                // Reload data
+                // Reload data with delay
+                await delay(1000);
                 await loadData();
                 
             } catch (error) {
                 console.error("Error ending auction:", error);
                 addDebugInfo(`❌ End auction failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('admin-status', `Error: ${error.message}`, 'error');
             }
         }
@@ -1714,17 +1893,23 @@
                 addDebugInfo(`✅ Auction reset. TX: ${tx.transactionHash}`);
                 showStatus('admin-status', "🎉 Auction reset successfully! You can now register new buyers.", 'success');
                 
-                // Reload data
+                // Reload data with delay
+                await delay(1000);
                 await loadData();
                 
             } catch (error) {
                 console.error("Error resetting auction:", error);
                 addDebugInfo(`❌ Reset auction failed: ${error.message}`);
+                
+                if (isCircuitBreakerIssue(error)) {
+                    showMetaMaskHelp(true);
+                }
+                
                 showStatus('admin-status', `Error: ${error.message}`, 'error');
             }
         }
 
-        // Helper function to disable the auction interface when auction is ended
+        // Helper function to disable the auction interface when the auction is ended
         function disableAuctionInterface() {
             document.getElementById('register-buyer').disabled = true;
             document.getElementById('calculate-optimal').disabled = true;
@@ -1768,6 +1953,7 @@
             document.getElementById('end-auction').addEventListener('click', endAuction);
             document.getElementById('reset-auction').addEventListener('click', resetAuction);
             document.getElementById('test-contract').addEventListener('click', testContract);
+            document.getElementById('retry-connection').addEventListener('click', retryConnection);
         });
     </script>
 </body>
