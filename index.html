@@ -205,7 +205,7 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
         // Contract details
-        const contractAddress = "0x2b429a8c88C751dda4ca018f467fcE63aE59019b"; // Replace with your deployed contract address
+        const contractAddress = "0x2b429a8c88C751dda4ca018f467fcE63aE59019b";
         const contractABI = [
         [
         {
@@ -1408,8 +1408,11 @@ async function checkUserRole() {
                 
                 showStatus('registration-status', "Registering as buyer...", 'info');
                 
-                // Call the AddBuyer function
-                const tx = await contract.methods.AddBuyer(demand, capacity, urgency).send({ from: currentAccount });
+                // Call the AddBuyer function with gas limit
+                const tx = await contract.methods.AddBuyer(demand, capacity, urgency).send({ 
+                    from: currentAccount,
+                    gas: 1000000
+                });
                 
                 showStatus('registration-status', "Successfully registered as buyer!", 'success');
                 
@@ -1427,8 +1430,11 @@ async function checkUserRole() {
             try {
                 showStatus('buyer-action-status', "Calculating optimal strategy...", 'info');
                 
-                // Call the OptimalStrategy function
-                const tx = await contract.methods.OptimalStrategy().send({ from: currentAccount });
+                // Call the OptimalStrategy function with gas limit
+                const tx = await contract.methods.OptimalStrategy().send({ 
+                    from: currentAccount,
+                    gas: 3000000
+                });
                 
                 showStatus('buyer-action-status', "Optimal strategy calculated successfully!", 'success');
                 
@@ -1462,10 +1468,11 @@ async function checkUserRole() {
                 // Get required payment amount
                 const paymentAmount = await contract.methods.getRequiredPaymentAmount().call({from: currentAccount});
                 
-                // Call the transferFunds function with value
+                // Call the transferFunds function with value and gas limit
                 const tx = await contract.methods.transferFunds().send({ 
                     from: currentAccount, 
-                    value: paymentAmount 
+                    value: paymentAmount,
+                    gas: 500000
                 });
                 
                 showStatus('buyer-action-status', "Payment successful!", 'success');
@@ -1488,8 +1495,11 @@ async function checkUserRole() {
                 
                 showStatus('admin-status', "Ending auction...", 'info');
                 
-                // Call the endAuction function
-                const tx = await contract.methods.endAuction().send({ from: currentAccount });
+                // Call the endAuction function with gas limit
+                const tx = await contract.methods.endAuction().send({ 
+                    from: currentAccount,
+                    gas: 2000000
+                });
                 
                 showStatus('admin-status', "Auction ended successfully!", 'success');
                 
