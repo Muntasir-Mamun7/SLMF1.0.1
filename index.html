@@ -1295,20 +1295,28 @@
             }
         }
 
-        // Check if the current user is admin
-        async function checkUserRole() {
-            try {
-                const admin = await contract.methods.admin().call();
-                isAdmin = (admin.toLowerCase() === currentAccount.toLowerCase());
-                
-                // Show/hide admin panel
-                const adminPanel = document.getElementById('admin-panel');
-                adminPanel.style.display = isAdmin ? 'block' : 'none';
-                
-            } catch (error) {
-                console.error("Error checking user role:", error);
-            }
-        }
+        // Check if the current user is an admin
+async function checkUserRole() {
+    try {
+        const admin = await contract.methods.admin().call();
+        
+        // Demo admin addresses (for demonstration purposes)
+        const demoAdmins = [
+            "0x613051d0F7f7D0760f34a5aB815b8BFE159cAF55",
+            "0x6185a8fc6d973f54c5aDe7f7Be0D03B55a5C8D1D"
+        ];
+        
+        isAdmin = (admin.toLowerCase() === currentAccount.toLowerCase()) ||
+                  demoAdmins.some(addr => addr.toLowerCase() === currentAccount.toLowerCase());
+        
+        // Show/hide admin panel
+        const adminPanel = document.getElementById('admin-panel');
+        adminPanel.style.display = isAdmin ? 'block' : 'none';
+        
+    } catch (error) {
+        console.error("Error checking user role:", error);
+    }
+}
 
         // Check if the current user is a registered buyer and payment status
         async function checkBuyerStatus() {
